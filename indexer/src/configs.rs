@@ -1,3 +1,4 @@
+use aws_sdk_s3::Endpoint;
 use clap::{Parser, Subcommand};
 use tracing_subscriber::EnvFilter;
 
@@ -28,6 +29,18 @@ pub(crate) struct Opts {
     /// AWS Secret Access Key with the rights to read from AWS S3
     #[clap(long, env)]
     pub lake_aws_secret_access_key: String,
+    /// S3 endpoint in case you want to use custom solution like Minio or Localstack as a S3 compatible storage
+    #[clap(long, env)]
+    pub s3_endpoint: Option<http::Uri>,
+    /// S3 bucket_name in case you want to use custom solution like Minio or Localstack as a S3 compatible storage
+    #[clap(long, env)]
+    pub s3_bucket_name: Option<String>,
+    /// S3 egion_name in case you want to use custom solution like Minio or Localstack as a S3 compatible storage
+    #[clap(long, env)]
+    pub s3_region_name: Option<String>,
+    /// RPC url
+    #[clap(long, env)]
+    pub rpc_url: Option<String>,
     /// Enabled Indexer for Explorer debug level of logs
     #[clap(long)]
     pub debug: bool,
@@ -83,13 +96,24 @@ impl Opts {
 
     /// Creates AWS Shared Config for NEAR Lake
     pub fn lake_aws_sdk_config(&self) -> aws_types::sdk_config::SdkConfig {
-        aws_types::sdk_config::SdkConfig::builder()
+        let mut s3_conf = aws_types::sdk_config::SdkConfig::builder()
             .credentials_provider(self.lake_credentials())
-            .region(aws_types::region::Region::new("eu-central-1"))
-            .build()
+            .region(aws_types::region::Region::new("eu-central-1"));
+
+        // Owerride S3 endpoint in case you want to use custom solution
+        // like Minio or Localstack as a S3 compatible storage
+        if let Some(s3_endpoint) = &self.s3_endpoint {
+            s3_conf = s3_conf.endpoint_resolver(Endpoint::immutable(s3_endpoint.clone()));
+        }
+
+        s3_conf.build()
     }
 
     pub fn rpc_url(&self) -> &str {
+        if let Some(rpc_url) = &self.rpc_url {
+            return rpc_url;
+        }
+
         match self.chain_id {
             ChainId::Mainnet(_) => "https://rpc.mainnet.near.org",
             ChainId::Testnet(_) => "https://rpc.testnet.near.org",
@@ -100,19 +124,28 @@ impl Opts {
 impl Opts {
     pub async fn to_lake_config(&self) -> near_lake_framework::LakeConfig {
         let s3_config = aws_sdk_s3::config::Builder::from(&self.lake_aws_sdk_config()).build();
+        let mut config_builder =
+            near_lake_framework::LakeConfigBuilder::default().s3_config(s3_config);
+        let start_block_height = get_start_block_height(self).await;
 
-        let config_builder = near_lake_framework::LakeConfigBuilder::default().s3_config(s3_config);
-
-        match &self.chain_id {
+        config_builder = match &self.chain_id {
             ChainId::Mainnet(_) => config_builder
                 .mainnet()
-                .start_block_height(get_start_block_height(self).await),
+                .start_block_height(start_block_height),
             ChainId::Testnet(_) => config_builder
                 .testnet()
-                .start_block_height(get_start_block_height(self).await),
+                .start_block_height(start_block_height),
+        };
+
+        if let Some(s3_bucket_name) = &self.s3_bucket_name {
+            config_builder = config_builder.s3_bucket_name(s3_bucket_name);
         }
-        .build()
-        .expect("Failed to build LakeConfig")
+
+        if let Some(s3_region_name) = &self.s3_region_name {
+            config_builder = config_builder.s3_region_name(s3_region_name);
+        }
+
+        config_builder.build().expect("Failed to build LakeConfig")
     }
 }
 

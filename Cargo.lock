@@ -834,7 +834,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "circulating_supply"
+name = "circulating-supply"
 version = "0.1.0"
 dependencies = [
  "actix",
@@ -1640,6 +1640,7 @@ dependencies = [
  "dotenv",
  "explorer-database",
  "futures",
+ "http",
  "itertools",
  "near-jsonrpc-client",
  "near-lake-framework",
