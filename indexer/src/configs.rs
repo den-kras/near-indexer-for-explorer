@@ -23,12 +23,6 @@ pub(crate) struct Opts {
     /// Connection string to connect to the PostgreSQL Database to fetch AlertRules from
     #[clap(long, env)]
     pub database_url: String,
-    /// AWS Access Key with the rights to read from AWS S3
-    #[clap(long, env)]
-    pub lake_aws_access_key: String,
-    /// AWS Secret Access Key with the rights to read from AWS S3
-    #[clap(long, env)]
-    pub lake_aws_secret_access_key: String,
     /// S3 endpoint in case you want to use custom solution like Minio or Localstack as a S3 compatible storage
     #[clap(long, env)]
     pub s3_endpoint: Option<http::Uri>,
