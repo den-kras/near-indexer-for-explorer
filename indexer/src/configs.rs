@@ -29,9 +29,9 @@ pub(crate) struct Opts {
     /// S3 bucket_name in case you want to use custom solution like Minio or Localstack as a S3 compatible storage
     #[clap(long, env)]
     pub s3_bucket_name: Option<String>,
-    /// S3 egion_name in case you want to use custom solution like Minio or Localstack as a S3 compatible storage
+    /// S3 region in case you want to use custom solution like Minio or Localstack as a S3 compatible storage
     #[clap(long, env)]
-    pub s3_region_name: Option<String>,
+    pub s3_region: Option<String>,
     /// RPC url
     #[clap(long, env)]
     pub rpc_url: Option<String>,
@@ -116,8 +116,8 @@ impl Opts {
             config_builder = config_builder.s3_bucket_name(s3_bucket_name);
         }
 
-        if let Some(s3_region_name) = &self.s3_region_name {
-            config_builder = config_builder.s3_region_name(s3_region_name);
+        if let Some(s3_region) = &self.s3_region {
+            config_builder = config_builder.s3_region_name(s3_region);
         }
 
         config_builder.build().expect("Failed to build LakeConfig")
